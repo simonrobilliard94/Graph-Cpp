@@ -26,16 +26,9 @@ int main() {
 
     // print the nodes from each graph.
     std::cout << "Graph g nodes:" << std::endl;
-    //g.printNodes();
+    g.printNodes();
     std::cout << "Graph g2 nodes:" << std::endl;
-    //g2.printNodes();
+    g2.printNodes();
     std::cout << "isNode test:" << std::endl;
     std::cout << std::boolalpha << g3.isNode(sp) << std::endl;
-
-    std::vector<int> v{1, 2, 3};
-    for(std::vector<int>::iterator t = v.begin(); t != v.end(); ++t) {
-        std::cout << *t;
-    }
-
-    return 0;
 }

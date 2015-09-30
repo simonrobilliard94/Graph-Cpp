@@ -8,55 +8,22 @@
 #include <vector>
 #include <iterator>
 #include <cassert>
+#include <memory>
+#include <algorithm>
+#include <iostream>
 
 namespace cs6771 {
-
-    //template <typename Node, typename Edge> class Graph;
 
     template <typename Node, typename Edge>
     class Graph {
     public:
-        /**
-         * Default Constructor
-         */
-        //friend class Edge_Iterator<Edge>;
-        //typedef Graph_Iterator<Edge> iterator;
-        //typedef Edge_Iterator edgeIterator;
+
         bool addNode(const Node& node);
         bool addEdge(const Node& start, const Node& end, const Edge& weight);
         bool deleteNode(const Node& node);
-        //bool deleteEdge(const Node& start, const Node& end, const Edge& weight);
         bool replace(const Node& target, const Node& replacement);
-        //void mergeReplace(const Node& source, const Node& target);*/
         bool isNode(const Node& node);
-        //iterator begin() {return iterator{nodes, 0};}
-
-        const Edge_Iterator& edgeIteratorBegin() const;
-        const Edge_Iterator& edgeIteratorEnd() const;
-
-
-        class Edge_Iterator {
-        public:
-            typedef std::ptrdiff_t                     difference_type;
-            typedef std::forward_iterator_tag          iterator_category;
-            typedef Edge                                  value_type;
-            typedef Edge*                                 pointer;
-            typedef Edge&                                 reference;
-
-            reference operator*() const;
-            pointer operator->() const { return &(operator*()); }
-            Edge_Iterator& operator++();
-            bool operator==(const Edge_Iterator& other) const;
-            bool operator!=(const Edge_Iterator& other) const { return !operator==(other); }
-
-            Edge_Iterator(const std::vector<Edge> collection, unsigned int position):
-                    collection_{collection}, position_{position} {}
-
-        private:
-            const std::vector<Edge> collection_;
-            unsigned int position_;
-        };
-
+        void printNodes();
 
     private:
         class NodeContainer {
@@ -64,9 +31,18 @@ namespace cs6771 {
             NodeContainer(const Node& node);
 
             const Node& getNode() const;
+            Node& getNode() { return *nodePtr; }
             bool addEdge(const NodeContainer& destination, const Edge& weight);
             std::shared_ptr<Node> getNodePtr() const;
             void setNode(const Node& replacement);
+            std::vector<Edge> getEdges() const;
+
+            bool operator<(const NodeContainer &other) const {
+                if(edges.size() != other.edges.size()) {
+                    return edges.size() > other.edges.size();
+                }
+                return *nodePtr < *other.nodePtr;
+            }
 
         private:
             class EdgeContainer {
@@ -83,6 +59,31 @@ namespace cs6771 {
             std::shared_ptr<Node> nodePtr;
         };
         std::vector<NodeContainer> nodes;
+
+    public:
+        class Iterator {
+        public:
+            typedef std::ptrdiff_t difference_type;
+            typedef std::forward_iterator_tag iterator_category;
+            typedef Node value_type;
+            typedef Node* pointer;
+            typedef Node& reference;
+
+            typename Iterator::reference operator*() const;
+            typename Iterator::pointer operator->() const;
+            Iterator& operator++();
+
+            bool operator==(const Iterator& other) const;
+            bool operator!=(const Iterator& other) const;
+
+            Iterator(typename std::vector<NodeContainer>::iterator it);
+
+        private:
+            typename std::vector<NodeContainer>::iterator it_;
+        };
+
+        Iterator begin();
+        Iterator end();
     };
 
     /***************** Graph Methods *****************************/
@@ -147,13 +148,30 @@ namespace cs6771 {
                                    [&node] (const NodeContainer nc) {
                                        return nc.getNode() == node;
                                    });
-        if(target != nodes.end) {
+        if(target != nodes.end()) {
             nodes.erase(target);
         }
     }
 
     template <typename Node, typename Edge>
+    typename Graph<Node,Edge>::Iterator Graph<Node,Edge>::begin() {
+        std::sort(nodes.begin(), nodes.end(), [] (const NodeContainer a, const NodeContainer b) {
+            return a < b;
+        });
+        return Iterator{nodes.begin()};
+    }
 
+    template <typename Node, typename Edge>
+    typename Graph<Node,Edge>::Iterator Graph<Node,Edge>::end() {
+        return Iterator{nodes.end()};
+    }
+
+    template <typename Node, typename Edge>
+    void Graph<Node, Edge>::printNodes() {
+        for(auto node: *this) {
+            std::cout << node << std::endl;
+        }
+    }
 
     /****************** Node Container Methods *********************/
 
@@ -193,6 +211,18 @@ namespace cs6771 {
         nodePtr = std::make_shared<Node>(replacement);
     }
 
+    template <typename Node, typename Edge>
+    std::vector<Edge> Graph<Node, Edge>::NodeContainer::getEdges() const {
+
+        std::vector<Edge> rawEdges{};
+
+        for(auto it = edges.cbegin(); it != edges.cend(); ++it) {
+            rawEdges.push_back(it->getWeight());
+        }
+
+        return rawEdges;
+    }
+
     /**************** Edge Container Methods *********************/
 
     template <typename Node, typename Edge>
@@ -211,29 +241,38 @@ namespace cs6771 {
         return *destination_.lock();
     }
 
-    /************ Edge Iterator Methods ****************************/
-    /*template <typename Node, typename Edge>
-    reference Graph<Node, Edge>::Edge_Iterator::operator*() const {
-        return collection_.at(position_);
-    }*/
+    /******************* Iterator Methods ****************************/
 
     template <typename Node, typename Edge>
-    typename Graph<Node, Edge>::Edge_Iterator::reference Graph<Node, Edge>::Edge_Iterator::operator*() const {
+    Graph<Node, Edge>::Iterator::Iterator(typename std::vector<NodeContainer>::iterator it): it_{it} {
 
+    }
+
+    template <typename Node, typename Edge>
+    typename Graph<Node, Edge>::Iterator::reference Graph<Node, Edge>::Iterator::operator*() const {
+        return it_->getNode();
     }
 
 
     template <typename Node, typename Edge>
-    typename Graph<Node, Edge>::Edge_Iterator& Graph<Node, Edge>::Edge_Iterator::operator++() {
-        if(position_ < collection_.size()) {
-            position_++;
-        }
+    typename Graph<Node, Edge>::Iterator::pointer Graph<Node, Edge>::Iterator::operator->() const {
+        return &(operator*());
+    }
+
+    template <typename Node, typename Edge>
+    bool Graph<Node, Edge>::Iterator::operator==(const Iterator &other) const {
+        return it_ == other.it_;
+    }
+
+    template <typename Node, typename Edge>
+    bool Graph<Node, Edge>::Iterator::operator!=(const Iterator &other) const {
+        return !(operator==(other));
+    }
+
+    template <typename Node, typename Edge>
+    typename Graph<Node, Edge>::Iterator& Graph<Node, Edge>::Iterator::operator++() {
+        ++it_;
         return *this;
-    }
-
-    template<typename Node, typename Edge>
-    bool Graph<Node, Edge>::Edge_Iterator::operator==(const Edge_Iterator &other) const {
-        return collection_[position_] == other.collection_[other.position_];
     }
 
 };
