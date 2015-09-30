@@ -22,8 +22,8 @@ int main() {
     const auto& constGraph = gCopy;
 
     std::cout << std::boolalpha << constGraph.isNode("a") << std::endl;
-    //std::cout << std::boolalpha << constGraph.isConnected("a","b") << std::endl;
-    //std::cout << std::boolalpha << constGraph.isConnected("c","b") << std::endl;
+    std::cout << std::boolalpha << constGraph.isConnected("a","b") << std::endl;
+    std::cout << std::boolalpha << constGraph.isConnected("c","b") << std::endl;
 
     std::cout << "Const graph: " << std::endl;
     constGraph.printNodes();

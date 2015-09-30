@@ -27,6 +27,8 @@ namespace cs6771 {
         void printNodes() const;
         void clear() noexcept;
         bool isConnected(const Node& start, const Node& end) const;
+        void mergeReplace(const Node& destroy, const Node& merge);
+        void printEdges(const Node& n) const;
 
     private:
         class NodeContainer {
@@ -52,6 +54,9 @@ namespace cs6771 {
             bool isConnected(const Node end) const;
 
             void removeEdge(const Node& end, const Edge& weight) noexcept;
+            void merge(NodeContainer destroy);
+
+            void printEdges() const;
 
         private:
             class EdgeContainer {
@@ -220,6 +225,39 @@ namespace cs6771 {
         }
     }
 
+    template <typename Node, typename Edge>
+    void Graph<Node, Edge>::mergeReplace(const Node &destroy, const Node &merge) {
+        if(!isNode(destroy) || !isNode(merge)) {
+            throw std::runtime_error("Expected the nodes to be defined");
+        }
+        auto dnc = std::find_if(nodes.begin(), nodes.end(), [&destroy] (const NodeContainer& nc) {
+            return nc.getNode() == destroy;
+        });
+
+        auto mnc = std::find_if(nodes.begin(), nodes.end(), [&merge] (const NodeContainer& nc) {
+            return nc.getNode() == merge;
+        });
+
+        mnc->merge(*dnc);
+
+        nodes.erase(dnc);
+    }
+
+    template <typename Node, typename Edge>
+    void Graph<Node, Edge>::printEdges(const Node &n) const {
+        if(!isNode(n)) {
+            throw std::runtime_error("Could not find node");
+        }
+
+        auto nc = std::find_if(nodes.cbegin(), nodes.cend(), [&n] (const NodeContainer nc) {
+            return nc.getNode() == n;
+        });
+
+        if(nc != nodes.cend()) {
+            nc->printEdges();
+        }
+    }
+
     /****************** Node Container Methods *********************/
 
     template <typename Node, typename Edge>
@@ -285,6 +323,37 @@ namespace cs6771 {
 
         if(toRemove != edges.end()) {
             edges.erase(toRemove);
+        }
+    }
+
+    template <typename Node, typename Edge>
+    void Graph<Node, Edge>::NodeContainer::merge(NodeContainer destroy) {
+        while(!destroy.edges.empty()) {
+            EdgeContainer ec = destroy.edges.back();
+            destroy.edges.pop_back();
+            if(ec.getDestination() != *nodePtr && !hasEdge(ec.getDestination(), ec.getWeight())) {
+                edges.push_back(ec);
+            }
+        }
+    }
+
+    template <typename Node, typename Edge>
+    void Graph<Node, Edge>::NodeContainer::printEdges() const {
+        std::vector<EdgeContainer> order{edges.cbegin(), edges.cend()};
+        std::sort(order.begin(), order.end(), [] (const EdgeContainer a, const EdgeContainer b) {
+            if(a.getWeight() == b.getWeight()) {
+                return a.getDestination() < b.getDestination();
+            }
+            return a.getWeight() < b.getWeight();
+        });
+        std::cout << "Edges attached to Node " << getNode() << std::endl;
+        for(auto e = order.cbegin(); e != order.cend(); ++e) {
+            if(e->getDestination() != nullptr) {
+                std::cout << e->getDestination() << " " << e->getWeight() << std::endl;
+            }
+        }
+        if(edges.size() == 0) {
+            std::cout << "(null)" << std::endl;
         }
     }
 
