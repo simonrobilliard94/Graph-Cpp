@@ -4,31 +4,38 @@
 
 
 int main() {
-    // create 3 graphs
-    cs6771::Graph<int,int> g;
-    cs6771::Graph<std::string,double> g2{};
-    cs6771::Graph<std::shared_ptr<int>,std::string> g3{};
+    cs6771::Graph<std::string,int> gCopy;
 
-    // add some nodes to each graph.
-    g.addNode(1);
-    int i = 2;
-    g.addNode(i);
-    double d = 3.41;
-    g.addNode(static_cast<int>(d));
+    // create some data to store as nodes.
+    std::string s = "a";
+    std::string t = "b";
+    std::string u = "c";
 
-    std::string s = "world";
-    g2.addNode(s);
-    g2.addNode("Hello");
+    // add this data into the graph
+    gCopy.addNode(s);
+    gCopy.addNode(t);
+    gCopy.addNode(u);
 
-    std::shared_ptr<int> sp = std::make_shared<int>(5);
-    g3.addNode(sp);
-    g3.addNode(std::make_shared<int>(6));
+    gCopy.addEdge(u,t,1);
+    gCopy.addEdge(u,t,2);
 
-    // print the nodes from each graph.
-    std::cout << "Graph g nodes:" << std::endl;
-    g.printNodes();
-    std::cout << "Graph g2 nodes:" << std::endl;
-    g2.printNodes();
-    std::cout << "isNode test:" << std::endl;
-    std::cout << std::boolalpha << g3.isNode(sp) << std::endl;
+    const auto& constGraph = gCopy;
+
+    std::cout << std::boolalpha << constGraph.isNode("a") << std::endl;
+    //std::cout << std::boolalpha << constGraph.isConnected("a","b") << std::endl;
+    //std::cout << std::boolalpha << constGraph.isConnected("c","b") << std::endl;
+
+    std::cout << "Const graph: " << std::endl;
+    constGraph.printNodes();
+    for (auto n : constGraph) {
+        std::cout << n;
+    }
+
+    for (auto n = constGraph.begin(); n != constGraph.end(); ++n) {
+        //constGraph.printEdges(*n);
+    }
+
+    /*for (auto e = constGraph.edgeIteratorBegin("c"); e != constGraph.edgeIteratorEnd(); ++e) {
+        std::cout << (*e).first << " " << (*e).second << std::endl;
+    }*/
 }

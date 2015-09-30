@@ -20,22 +20,26 @@ namespace cs6771 {
 
         bool addNode(const Node& node);
         bool addEdge(const Node& start, const Node& end, const Edge& weight);
-        bool deleteNode(const Node& node);
+        void deleteNode(const Node& node) noexcept;
+        void deleteEdge(const Node& start, const Node& end, const Edge& weight);
         bool replace(const Node& target, const Node& replacement);
-        bool isNode(const Node& node);
-        void printNodes();
+        bool isNode(const Node& node) const;
+        void printNodes() const;
+        void clear() noexcept;
+        bool isConnected(const Node& start, const Node& end) const;
 
     private:
         class NodeContainer {
         public:
             NodeContainer(const Node& node);
 
-            const Node& getNode() const;
+            const Node& getNode() const {
+                return *nodePtr;
+            };
             Node& getNode() { return *nodePtr; }
             bool addEdge(const NodeContainer& destination, const Edge& weight);
             std::shared_ptr<Node> getNodePtr() const;
             void setNode(const Node& replacement);
-            std::vector<Edge> getEdges() const;
 
             bool operator<(const NodeContainer &other) const {
                 if(edges.size() != other.edges.size()) {
@@ -43,6 +47,11 @@ namespace cs6771 {
                 }
                 return *nodePtr < *other.nodePtr;
             }
+
+            bool hasEdge(const Node end, const Edge weight) const;
+            bool isConnected(const Node end) const;
+
+            void removeEdge(const Node& end, const Edge& weight) noexcept;
 
         private:
             class EdgeContainer {
@@ -58,16 +67,16 @@ namespace cs6771 {
             std::vector<EdgeContainer> edges;
             std::shared_ptr<Node> nodePtr;
         };
-        std::vector<NodeContainer> nodes;
+        mutable std::vector<NodeContainer> nodes;
 
     public:
         class Iterator {
         public:
             typedef std::ptrdiff_t difference_type;
             typedef std::forward_iterator_tag iterator_category;
-            typedef Node value_type;
-            typedef Node* pointer;
-            typedef Node& reference;
+            typedef typename std::remove_const<Node>::type value_type;
+            typedef const Node* pointer;
+            typedef const Node& reference;
 
             typename Iterator::reference operator*() const;
             typename Iterator::pointer operator->() const;
@@ -76,14 +85,14 @@ namespace cs6771 {
             bool operator==(const Iterator& other) const;
             bool operator!=(const Iterator& other) const;
 
-            Iterator(typename std::vector<NodeContainer>::iterator it);
+            Iterator(typename std::vector<NodeContainer>::const_iterator it);
 
         private:
-            typename std::vector<NodeContainer>::iterator it_;
+            typename std::vector<NodeContainer>::const_iterator it_;
         };
 
-        Iterator begin();
-        Iterator end();
+        Iterator begin() const;
+        Iterator end() const;
     };
 
     /***************** Graph Methods *****************************/
@@ -112,24 +121,28 @@ namespace cs6771 {
                                     });
 
         if(startNC == nodes.end() || endNC == nodes.end()) {
-            return false;
+            throw std::runtime_error("Expected nodes to exist");
         }
 
         return startNC->addEdge(*endNC, weight);
     };
 
     template <typename Node, typename Edge>
-    bool Graph<Node, Edge>::isNode(const Node& node) {
-        auto nc = std::find_if(nodes.begin(), nodes.end(),
-                               [&node] (const NodeContainer& nodeContainer) {
-                                   return node == nodeContainer.getNode();
-                               });
-        return nc != nodes.end();
+    bool Graph<Node, Edge>::isNode(const Node& node) const {
+        auto nc = std::find_if(nodes.cbegin(), nodes.cend(), [&node] (const NodeContainer& nodeContainer) {
+            const Node n1 = nodeContainer.getNode();
+            return n1 == node;
+        });
+
+        return nc != nodes.cend();
     }
 
     template <typename Node, typename Edge>
     bool Graph<Node, Edge>::replace(const Node &target, const Node &replacement) {
         if(!isNode(target)) {
+            throw std::runtime_error("Expected node to exist");
+        }
+        if(isNode(replacement)) {
             return false;
         }
         bool found = false;
@@ -143,7 +156,7 @@ namespace cs6771 {
     }
 
     template <typename Node, typename Edge>
-    bool Graph<Node, Edge>::deleteNode(const Node &node) {
+    void Graph<Node, Edge>::deleteNode(const Node &node) noexcept {
         auto target = std::find_if(nodes.begin(), nodes.end(),
                                    [&node] (const NodeContainer nc) {
                                        return nc.getNode() == node;
@@ -154,22 +167,56 @@ namespace cs6771 {
     }
 
     template <typename Node, typename Edge>
-    typename Graph<Node,Edge>::Iterator Graph<Node,Edge>::begin() {
+    typename Graph<Node,Edge>::Iterator Graph<Node,Edge>::begin() const {
         std::sort(nodes.begin(), nodes.end(), [] (const NodeContainer a, const NodeContainer b) {
             return a < b;
         });
-        return Iterator{nodes.begin()};
+        return Iterator{nodes.cbegin()};
     }
 
     template <typename Node, typename Edge>
-    typename Graph<Node,Edge>::Iterator Graph<Node,Edge>::end() {
-        return Iterator{nodes.end()};
+    typename Graph<Node,Edge>::Iterator Graph<Node,Edge>::end() const {
+        return Iterator{nodes.cend()};
     }
 
     template <typename Node, typename Edge>
-    void Graph<Node, Edge>::printNodes() {
+    void Graph<Node, Edge>::printNodes() const {
         for(auto node: *this) {
             std::cout << node << std::endl;
+        }
+    }
+
+    template <typename Node, typename Edge>
+    void Graph<Node, Edge>::clear() noexcept {
+        std::vector<NodeContainer> newcontainer{};
+        nodes = newcontainer;
+    }
+
+    template <typename Node, typename Edge>
+    void Graph<Node, Edge>::deleteEdge(const Node &start, const Node &end, const Edge &weight) {
+        auto target = std::find_if(nodes.begin(), nodes.end(), [&start]
+                (const NodeContainer& nc) {
+            return nc.getNode() == start;
+        });
+        if(target == nodes.end()) {
+            return;
+        }
+
+        target->removeEdge(end, weight);
+    }
+
+    template <typename Node, typename Edge>
+    bool Graph<Node, Edge>::isConnected(const Node &start, const Node &end) const {
+        if(!isNode(start) || !isNode(end)) {
+            throw std::runtime_error("start or end node did not exist");
+        }
+
+        auto nc = std::find_if(nodes.begin(), nodes.end(), [&start] (const NodeContainer nc) {
+            return nc.getNode() == start;
+        });
+
+        if(nc != nodes.end()) {
+            return nc->isConnected(end);
         }
     }
 
@@ -196,10 +243,6 @@ namespace cs6771 {
         return true;
     }
 
-    template <typename Node, typename Edge>
-    const Node& Graph<Node, Edge>::NodeContainer::getNode() const {
-        return *nodePtr;
-    }
 
     template <typename Node, typename Edge>
     std::shared_ptr<Node> Graph<Node, Edge>::NodeContainer::getNodePtr() const {
@@ -211,16 +254,38 @@ namespace cs6771 {
         nodePtr = std::make_shared<Node>(replacement);
     }
 
+    /*template <typename Node, typename Edge>
+    std::vector<Graph<Node, Edge>::NodeContainer::EdgeContainer> Graph<Node, Edge>::NodeContainer::getEdges() const {
+        return edges;
+    }*/
+
     template <typename Node, typename Edge>
-    std::vector<Edge> Graph<Node, Edge>::NodeContainer::getEdges() const {
+    bool Graph<Node, Edge>::NodeContainer::hasEdge(const Node end, const Edge weight) const {
+        auto ec = std::find_if(edges.cbegin(), edges.cend(), [&end, &weight] (const EdgeContainer& ec) {
+            return (ec.getDestination() == end && ec.getWeight() == weight);
+        });
 
-        std::vector<Edge> rawEdges{};
+        return ec != edges.cend();
+    };
 
-        for(auto it = edges.cbegin(); it != edges.cend(); ++it) {
-            rawEdges.push_back(it->getWeight());
+    template <typename Node, typename Edge>
+    bool Graph<Node, Edge>::NodeContainer::isConnected(const Node end) const {
+        auto ec = std::find_if(edges.cbegin(), edges.cend(), [&end] (const EdgeContainer& ec) {
+            return (ec.getDestination() == end);
+        });
+
+        return ec != edges.cend();
+    };
+
+    template <typename Node, typename Edge>
+    void Graph<Node, Edge>::NodeContainer::removeEdge(const Node &end, const Edge &weight) noexcept {
+        auto toRemove = std::find_if(edges.begin(), edges.end(), [&end, &weight] (const EdgeContainer ec) {
+            return (ec.getDestination() == end && ec.getWeight() == weight);
+        });
+
+        if(toRemove != edges.end()) {
+            edges.erase(toRemove);
         }
-
-        return rawEdges;
     }
 
     /**************** Edge Container Methods *********************/
@@ -244,7 +309,7 @@ namespace cs6771 {
     /******************* Iterator Methods ****************************/
 
     template <typename Node, typename Edge>
-    Graph<Node, Edge>::Iterator::Iterator(typename std::vector<NodeContainer>::iterator it): it_{it} {
+    Graph<Node, Edge>::Iterator::Iterator(typename std::vector<NodeContainer>::const_iterator it): it_{it} {
 
     }
 
