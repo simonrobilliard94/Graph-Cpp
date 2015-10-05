@@ -233,6 +233,7 @@ namespace cs6771 {
         if(nc != nodes.end()) {
             return nc->isConnected(end);
         }
+        return false;
     }
 
     template <typename Node, typename Edge>
@@ -302,11 +303,6 @@ namespace cs6771 {
         nodePtr = std::make_shared<Node>(replacement);
     }
 
-    /*template <typename Node, typename Edge>
-    std::vector<Graph<Node, Edge>::NodeContainer::EdgeContainer> Graph<Node, Edge>::NodeContainer::getEdges() const {
-        return edges;
-    }*/
-
     template <typename Node, typename Edge>
     bool Graph<Node, Edge>::NodeContainer::hasEdge(const Node end, const Edge weight) const {
         auto ec = std::find_if(edges.cbegin(), edges.cend(), [&end, &weight] (const EdgeContainer& ec) {
@@ -373,7 +369,7 @@ namespace cs6771 {
             if(a.second == b.second) {
                 return a.first < b.first;
             }
-            return a.first > b.first;
+            return a.second < b.second;
         });
         return newOrder;
     }
@@ -382,8 +378,8 @@ namespace cs6771 {
 
     template <typename Node, typename Edge>
     Graph<Node, Edge>::NodeContainer::EdgeContainer::EdgeContainer(const NodeContainer &destination, const Edge &weight):
-            weight_{weight} {
-        destination_ = destination.getNodePtr();
+            weight_{weight}, destination_{destination.getNodePtr()} {
+
     }
 
     template <typename Node, typename Edge>

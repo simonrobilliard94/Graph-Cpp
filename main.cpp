@@ -1,41 +1,35 @@
-#include <iostream>
-#include <assert.h>
+// test 8: tests copy construction
+
 #include "Graph.hpp"
 
-
 int main() {
-
-    cs6771::Graph<std::string, int> gCopy;
-
-    // create some data to store as nodes.
-    std::string s = "a";
-    std::string t = "b";
-    std::string u = "c";
+    auto gHeap = new cs6771::Graph<std::string,int>{};
 
     // add this data into the graph
-    gCopy.addNode(s);
-    gCopy.addNode(t);
-    gCopy.addNode(u);
+    gHeap->addNode("a");
+    gHeap->addNode("b");
+    gHeap->addNode("c");
+    gHeap->addNode("d");
 
-    gCopy.addEdge(u, t, 1);
-    gCopy.addEdge(u, t, 2);
+    gHeap->addEdge("b","a",3);
+    gHeap->addEdge("b","a",5);
+    gHeap->addEdge("b","d",4);
+    gHeap->addEdge("c","a",3);
 
-    std::cout << "Graph before node replacement" << std::endl;
-    gCopy.printNodes();
+    std::cout << "original graph" << std::endl;
+    gHeap->printNodes();
+    gHeap->printEdges("b");
 
-    // replace node
-    gCopy.replace("a", "e");
-    std::cout << "Graph after node replacement" << std::endl;
-    gCopy.printNodes();
+    auto gHeapCopy = *gHeap;
+    gHeap->deleteNode("a");
+    std::cout << "original graph after delete" << std::endl;
+    gHeap->printNodes();
+    gHeap->printEdges("b");
+    std::cout << "copied graph after delete in other graph" << std::endl;
+    gHeapCopy.printNodes();
+    gHeapCopy.printEdges("b");
 
-    std::cout << "trying to replace node with an existing node" << std::endl;
-    std::cout << std::boolalpha << gCopy.replace("b", "c") << std::endl;
-
-    std::cout << "trying to replace node with a node not in the graph" << std::endl;
-    try {
-        gCopy.replace("a", "d");
-    } catch (const std::exception &ex) {
-        //std::cerr << ex.what() << std::endl;
-        std::cout << "exception caught" << std::endl;
-    }
+    delete gHeap;
+    std::cout << "copied graph after other graph is deleted" << std::endl;
+    gHeapCopy.printNodes();
 }
