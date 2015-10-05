@@ -13,14 +13,18 @@ int main() {
 
     gHeap->addEdge("b","a",3);
     gHeap->addEdge("b","a",5);
-    gHeap->addEdge("b","d",4);
     gHeap->addEdge("c","a",3);
 
     std::cout << "original graph" << std::endl;
     gHeap->printNodes();
     gHeap->printEdges("b");
 
-    auto gHeapCopy = *gHeap;
+    cs6771::Graph<std::string,int> gHeapCopy;
+    gHeapCopy.addNode("z");
+    std::cout << "Graph before copy assignment" << std::endl;
+    gHeapCopy.printNodes();
+
+    gHeapCopy = *gHeap;	// copy assignment
     gHeap->deleteNode("a");
     std::cout << "original graph after delete" << std::endl;
     gHeap->printNodes();

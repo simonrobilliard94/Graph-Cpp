@@ -18,6 +18,37 @@ namespace cs6771 {
     template <typename Node, typename Edge>
     class Graph {
     public:
+        Graph(): nodes{}, ordered_edges{} {}
+        Graph(const Graph &g): nodes{}, ordered_edges{} {
+            for(auto it = g.nodes.cbegin(); it != g.nodes.cend(); ++it) {
+                Node n{it->getNode()};
+                NodeContainer nc{n};
+                nodes.push_back(nc);
+            }
+
+            for(auto it = nodes.begin(); it != nodes.end(); ++it) {
+                for(auto et = g.edgeIteratorBegin(it->getNode()); et != g.edgeIteratorEnd(); ++et) {
+                    addEdge(it->getNode(), et->first, et->second);
+                }
+            }
+        }
+
+        Graph& operator=(const Graph& g) {
+            this->clear();
+            for(auto it = g.nodes.cbegin(); it != g.nodes.cend(); ++it) {
+                Node n{it->getNode()};
+                NodeContainer nc{n};
+                this->nodes.push_back(nc);
+            }
+
+            for(auto it = this->nodes.begin(); it != this->nodes.end(); ++it) {
+                for(auto et = g.edgeIteratorBegin(it->getNode()); et != g.edgeIteratorEnd(); ++et) {
+                    this->addEdge(it->getNode(), et->first, et->second);
+                }
+            }
+            return *this;
+        }
+
 
         bool addNode(const Node& node);
         bool addEdge(const Node& start, const Node& end, const Edge& weight);
@@ -68,6 +99,7 @@ namespace cs6771 {
                 const Edge& getWeight() const;
                 const Node& getDestination() const;
                 bool isValid() const;
+
             private:
                 Edge weight_;
                 std::weak_ptr<Node> destination_;
@@ -300,7 +332,7 @@ namespace cs6771 {
 
     template <typename Node, typename Edge>
     void Graph<Node, Edge>::NodeContainer::setNode(const Node &replacement) {
-        nodePtr = std::make_shared<Node>(replacement);
+        *nodePtr = replacement;
     }
 
     template <typename Node, typename Edge>
