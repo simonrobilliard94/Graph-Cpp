@@ -4,7 +4,8 @@
 
 
 int main() {
-    cs6771::Graph<std::string,int> gCopy;
+
+    cs6771::Graph<std::string, int> gCopy;
 
     // create some data to store as nodes.
     std::string s = "a";
@@ -16,26 +17,25 @@ int main() {
     gCopy.addNode(t);
     gCopy.addNode(u);
 
-    gCopy.addEdge(u,t,1);
-    gCopy.addEdge(u,t,2);
+    gCopy.addEdge(u, t, 1);
+    gCopy.addEdge(u, t, 2);
 
-    const auto& constGraph = gCopy;
+    std::cout << "Graph before node replacement" << std::endl;
+    gCopy.printNodes();
 
-    std::cout << std::boolalpha << constGraph.isNode("a") << std::endl;
-    std::cout << std::boolalpha << constGraph.isConnected("a","b") << std::endl;
-    std::cout << std::boolalpha << constGraph.isConnected("c","b") << std::endl;
+    // replace node
+    gCopy.replace("a", "e");
+    std::cout << "Graph after node replacement" << std::endl;
+    gCopy.printNodes();
 
-    std::cout << "Const graph: " << std::endl;
-    constGraph.printNodes();
-    for (auto n : constGraph) {
-        std::cout << n;
+    std::cout << "trying to replace node with an existing node" << std::endl;
+    std::cout << std::boolalpha << gCopy.replace("b", "c") << std::endl;
+
+    std::cout << "trying to replace node with a node not in the graph" << std::endl;
+    try {
+        gCopy.replace("a", "d");
+    } catch (const std::exception &ex) {
+        //std::cerr << ex.what() << std::endl;
+        std::cout << "exception caught" << std::endl;
     }
-
-    for (auto n = constGraph.begin(); n != constGraph.end(); ++n) {
-        //constGraph.printEdges(*n);
-    }
-
-    /*for (auto e = constGraph.edgeIteratorBegin("c"); e != constGraph.edgeIteratorEnd(); ++e) {
-        std::cout << (*e).first << " " << (*e).second << std::endl;
-    }*/
 }

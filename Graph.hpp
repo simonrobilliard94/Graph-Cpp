@@ -11,6 +11,7 @@
 #include <memory>
 #include <algorithm>
 #include <iostream>
+#include <utility>
 
 namespace cs6771 {
 
@@ -58,12 +59,15 @@ namespace cs6771 {
 
             void printEdges() const;
 
+            std::vector<std::pair<Node, Edge>> generateOrder() const;
+
         private:
             class EdgeContainer {
             public:
                 EdgeContainer(const NodeContainer& destination, const Edge& weight);
                 const Edge& getWeight() const;
                 const Node& getDestination() const;
+                bool isValid() const;
             private:
                 Edge weight_;
                 std::weak_ptr<Node> destination_;
@@ -72,7 +76,10 @@ namespace cs6771 {
             std::vector<EdgeContainer> edges;
             std::shared_ptr<Node> nodePtr;
         };
+        // mutable because we need to re-order nodes upon iteration
         mutable std::vector<NodeContainer> nodes;
+        mutable std::vector<std::pair<Node, Edge>> ordered_edges;
+
 
     public:
         class Iterator {
@@ -98,6 +105,9 @@ namespace cs6771 {
 
         Iterator begin() const;
         Iterator end() const;
+
+        typename std::vector<std::pair<Node, Edge>>::const_iterator edgeIteratorBegin(const Node& node) const;
+        typename std::vector<std::pair<Node, Edge>>::const_iterator edgeIteratorEnd() const;
     };
 
     /***************** Graph Methods *****************************/
@@ -268,7 +278,7 @@ namespace cs6771 {
     bool Graph<Node, Edge>::NodeContainer::addEdge(const NodeContainer &destination, const Edge &weight) {
         bool duplicate = false;
         for(auto it = edges.begin(); it != edges.end(); ++it) {
-            if(it->getDestination() == destination.getNode() && it->getWeight() == weight) {
+            if(it->isValid() && it->getDestination() == destination.getNode() && it->getWeight() == weight) {
                 duplicate = true;
             }
         }
@@ -300,7 +310,7 @@ namespace cs6771 {
     template <typename Node, typename Edge>
     bool Graph<Node, Edge>::NodeContainer::hasEdge(const Node end, const Edge weight) const {
         auto ec = std::find_if(edges.cbegin(), edges.cend(), [&end, &weight] (const EdgeContainer& ec) {
-            return (ec.getDestination() == end && ec.getWeight() == weight);
+            return (ec.isValid() && ec.getDestination() == end && ec.getWeight() == weight);
         });
 
         return ec != edges.cend();
@@ -309,7 +319,7 @@ namespace cs6771 {
     template <typename Node, typename Edge>
     bool Graph<Node, Edge>::NodeContainer::isConnected(const Node end) const {
         auto ec = std::find_if(edges.cbegin(), edges.cend(), [&end] (const EdgeContainer& ec) {
-            return (ec.getDestination() == end);
+            return (ec.isValid() && ec.getDestination() == end);
         });
 
         return ec != edges.cend();
@@ -318,7 +328,7 @@ namespace cs6771 {
     template <typename Node, typename Edge>
     void Graph<Node, Edge>::NodeContainer::removeEdge(const Node &end, const Edge &weight) noexcept {
         auto toRemove = std::find_if(edges.begin(), edges.end(), [&end, &weight] (const EdgeContainer ec) {
-            return (ec.getDestination() == end && ec.getWeight() == weight);
+            return (ec.isValid() && ec.getDestination() == end && ec.getWeight() == weight);
         });
 
         if(toRemove != edges.end()) {
@@ -331,7 +341,7 @@ namespace cs6771 {
         while(!destroy.edges.empty()) {
             EdgeContainer ec = destroy.edges.back();
             destroy.edges.pop_back();
-            if(ec.getDestination() != *nodePtr && !hasEdge(ec.getDestination(), ec.getWeight())) {
+            if(ec.isValid() && ec.getDestination() != *nodePtr && !hasEdge(ec.getDestination(), ec.getWeight())) {
                 edges.push_back(ec);
             }
         }
@@ -339,22 +349,33 @@ namespace cs6771 {
 
     template <typename Node, typename Edge>
     void Graph<Node, Edge>::NodeContainer::printEdges() const {
-        std::vector<EdgeContainer> order{edges.cbegin(), edges.cend()};
-        std::sort(order.begin(), order.end(), [] (const EdgeContainer a, const EdgeContainer b) {
-            if(a.getWeight() == b.getWeight()) {
-                return a.getDestination() < b.getDestination();
-            }
-            return a.getWeight() < b.getWeight();
-        });
+        std::vector<std::pair<Node, Edge>> order = generateOrder();
         std::cout << "Edges attached to Node " << getNode() << std::endl;
         for(auto e = order.cbegin(); e != order.cend(); ++e) {
-            if(e->getDestination() != nullptr) {
-                std::cout << e->getDestination() << " " << e->getWeight() << std::endl;
-            }
+            std::cout << e->first << " " << e->second << std::endl;
         }
-        if(edges.size() == 0) {
+        if(order.size() == 0) {
             std::cout << "(null)" << std::endl;
         }
+    }
+
+    template <typename Node, typename Edge>
+    std::vector<std::pair<Node, Edge>> Graph<Node, Edge>::NodeContainer::generateOrder() const {
+        std::vector<std::pair<Node, Edge>> newOrder{};
+        for(auto it = edges.cbegin(); it != edges.end(); ++it) {
+            if(it->isValid()) {
+                std::pair<Node, Edge>  p= std::make_pair(it->getDestination(), it->getWeight());
+                newOrder.push_back(p);
+            }
+        }
+        std::sort(newOrder.begin(), newOrder.end(), []
+                (const std::pair<Node, Edge> a, const std::pair<Node, Edge> b) {
+            if(a.second == b.second) {
+                return a.first < b.first;
+            }
+            return a.first > b.first;
+        });
+        return newOrder;
     }
 
     /**************** Edge Container Methods *********************/
@@ -373,6 +394,14 @@ namespace cs6771 {
     template <typename Node, typename Edge>
     const Node& Graph<Node, Edge>::NodeContainer::EdgeContainer::getDestination() const {
         return *destination_.lock();
+    }
+
+    template <typename Node, typename Edge>
+    bool Graph<Node, Edge>::NodeContainer::EdgeContainer::isValid() const {
+        if(destination_.lock() != nullptr) {
+            return true;
+        }
+        return false;
     }
 
     /******************* Iterator Methods ****************************/
@@ -407,6 +436,25 @@ namespace cs6771 {
     typename Graph<Node, Edge>::Iterator& Graph<Node, Edge>::Iterator::operator++() {
         ++it_;
         return *this;
+    }
+
+    /**************** edge iterator methods **********************/
+    template <typename Node, typename Edge>
+    typename std::vector<std::pair<Node, Edge>>::const_iterator Graph<Node, Edge>::edgeIteratorBegin(const Node &node) const {
+        if(!isNode(node)) {
+            throw std::runtime_error("could not find node in graph");
+        }
+        auto nc = std::find_if(nodes.begin(), nodes.end(), [&node] (const NodeContainer nc) {
+            return nc.getNode() == node;
+        });
+
+        this->ordered_edges = nc->generateOrder();
+        return this->ordered_edges.cbegin();
+    }
+
+    template <typename Node, typename Edge>
+    typename std::vector<std::pair<Node, Edge>>::const_iterator Graph<Node, Edge>::edgeIteratorEnd() const {
+        return ordered_edges.cend();
     }
 
 };
